@@ -27,7 +27,7 @@ class ThreadPool final : public IThreadPool {
     Private volatile Bool shutdownFlag;
     Private volatile Bool shutdownNowFlag;
     Private volatile Size runningCount;
-    Private Vector<TaskHandle_t> workerHandles;
+    Private StdVector<TaskHandle_t> workerHandles;
 
     Private Void WorkerLoop() {
         for (;;) {
