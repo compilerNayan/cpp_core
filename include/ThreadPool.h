@@ -18,7 +18,7 @@
 class ThreadPool final : public IThreadPool {
 
     Private Size poolSize;
-    Private Vector<std::thread> workers;
+    Private StdVector<std::thread> workers;
     Private std::queue<std::function<Void()>> taskQueue;
     Private mutable std::mutex mutex;
     Private std::condition_variable cvTask;
