@@ -251,7 +251,11 @@ def get_all_files_desktop(
             )
             all_paths.update(lib_files)
 
-    return sorted(all_paths)
+    result = sorted(all_paths)
+    print("[get_all_files_desktop] returning {} files:".format(len(result)))
+    for f in result:
+        print(f)
+    return result
 
 
 def get_all_files_arduino(
@@ -318,7 +322,11 @@ def get_all_files_arduino(
             )
             all_paths.update(lib_files)
 
-    return sorted(all_paths)
+    result = sorted(all_paths)
+    print("[get_all_files_arduino] returning {} files:".format(len(result)))
+    for f in result:
+        print(f)
+    return result
 
 
 def _is_cmake_build(project_dir: Optional[str] = None) -> bool:
