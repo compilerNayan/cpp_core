@@ -1,6 +1,0 @@
-#ifndef CPP_CORE_UNORDEREDSET
-#define CPP_CORE_UNORDEREDSET
-#include <unordered_set>
-template <typename T>
-using UnorderedSet = std::unordered_set<T>;
-#endif

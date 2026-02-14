@@ -1,0 +1,6 @@
+#ifndef CPP_CORE_STDMAP
+#define CPP_CORE_STDMAP
+#include <map>
+template <typename K, typename V>
+using StdMap = std::map<K, V>;
+#endif

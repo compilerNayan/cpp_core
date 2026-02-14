@@ -1,0 +1,6 @@
+#ifndef CPP_CORE_STDARRAY
+#define CPP_CORE_STDARRAY
+#include <array>
+template <typename T, std::size_t N>
+using StdArray = std::array<T, N>;
+#endif

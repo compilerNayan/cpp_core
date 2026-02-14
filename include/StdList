@@ -1,0 +1,6 @@
+#ifndef CPP_CORE_STDLIST
+#define CPP_CORE_STDLIST
+#include <list>
+template <typename T>
+using StdList = std::list<T>;
+#endif

@@ -1,0 +1,6 @@
+#ifndef CPP_CORE_STDSET
+#define CPP_CORE_STDSET
+#include <set>
+template <typename T>
+using StdSet = std::set<T>;
+#endif

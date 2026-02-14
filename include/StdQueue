@@ -1,0 +1,6 @@
+#ifndef CPP_CORE_STDQUEUE
+#define CPP_CORE_STDQUEUE
+#include <queue>
+template <typename T>
+using StdQueue = std::queue<T>;
+#endif

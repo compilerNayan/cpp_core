@@ -1,6 +1,0 @@
-#ifndef CPP_CORE_UNORDEREDMAP
-#define CPP_CORE_UNORDEREDMAP
-#include <unordered_map>
-template <typename K, typename V>
-using UnorderedMap = std::unordered_map<K, V>;
-#endif

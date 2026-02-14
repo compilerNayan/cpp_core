@@ -5,17 +5,17 @@
 #include <optional>
 #include <ArduinoJson.h>
 
-// Container type aliases (in separate files so they can be included on need basis and avoid clashes)
-#include "Vector"
-#include "List"
-#include "Deque"
-#include "Set"
-#include "UnorderedSet"
-#include "Array"
-#include "Map"
-#include "UnorderedMap"
-#include "Queue"
-#include "Stack"
+// Container type aliases (Std prefix; separate files so they can be included on need basis and avoid clashes with <vector> etc.)
+#include "StdVector"
+#include "StdList"
+#include "StdDeque"
+#include "StdSet"
+#include "StdUnorderedSet"
+#include "StdArray"
+#include "StdMap"
+#include "StdUnorderedMap"
+#include "StdQueue"
+#include "StdStack"
 
 // Arduino/ESP32 compatible integer types
 typedef int Int;

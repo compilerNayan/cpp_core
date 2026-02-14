@@ -1,0 +1,6 @@
+#ifndef CPP_CORE_STDVECTOR
+#define CPP_CORE_STDVECTOR
+#include <vector>
+template <typename T>
+using StdVector = std::vector<T>;
+#endif

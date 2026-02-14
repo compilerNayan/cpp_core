@@ -1,0 +1,6 @@
+#ifndef CPP_CORE_STDDEQUE
+#define CPP_CORE_STDDEQUE
+#include <deque>
+template <typename T>
+using StdDeque = std::deque<T>;
+#endif
