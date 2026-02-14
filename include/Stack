@@ -1,0 +1,6 @@
+#ifndef CPP_CORE_STACK
+#define CPP_CORE_STACK
+#include <stack>
+template <typename T>
+using Stack = std::stack<T>;
+#endif
