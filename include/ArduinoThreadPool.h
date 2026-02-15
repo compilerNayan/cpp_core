@@ -11,7 +11,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-#define THREAD_POOL_ESP32_STACK_SIZE 4096
+#define THREAD_POOL_ESP32_STACK_SIZE 8192
 #define THREAD_POOL_ESP32_PRIORITY 1
 #define THREAD_POOL_ESP32_MAX_QUEUE_SIGNALS 512
 
