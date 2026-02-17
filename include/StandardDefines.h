@@ -80,7 +80,9 @@ using std::make_shared;
     typedef weak_ptr<class_name> class_name##WPtr; \
     typedef const weak_ptr<class_name> C##class_name##WPtr; \
     typedef shared_ptr<class_name> class_name##Ptr; \
-    typedef const shared_ptr<class_name> C##class_name##Ptr;
+    typedef const shared_ptr<class_name> C##class_name##Ptr; \
+    typedef unique_ptr<class_name> class_name##UPtr; \
+    typedef const unique_ptr<class_name> C##class_name##UPtr;
 
 #define make_ptr std::make_shared
 
