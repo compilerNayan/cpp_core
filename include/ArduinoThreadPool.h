@@ -85,7 +85,7 @@ class ThreadPool final : public IThreadPool {
     }
 
 Public
-    ThreadPool() : ThreadPool(4) {}
+    ThreadPool() : ThreadPool(10) {}
 
     Explicit ThreadPool(CSize numThreads)
         : poolSize(numThreads > 0 ? numThreads : 1)
