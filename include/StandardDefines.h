@@ -26,6 +26,8 @@ typedef long Long;
 typedef const long CLong;
 typedef unsigned long ULong;
 typedef const unsigned long CULong;
+typedef unsigned long long ULongLong;
+typedef const unsigned long long CULongLong;
 typedef unsigned char UInt8;
 
 // Character types
