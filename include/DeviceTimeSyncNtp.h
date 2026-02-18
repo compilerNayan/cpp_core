@@ -12,16 +12,21 @@
 #include <WiFiUdp.h>
 #include <time.h>
 #include <sys/time.h>
+#include <stdlib.h>
 
 /**
  * Syncs device time from NTP via our own UDP request/response, then settimeofday().
  * Does not rely on configTime() / built-in SNTP. Tries multiple servers (IPs first).
  * Requires WiFi to be connected before calling SyncTimeFromNetwork().
+ * After sync, sets process timezone so localtime() is used for display (see kTimezone).
  */
 /* @Component */
 class DeviceTimeSyncNtp : public IDeviceTime {
     /* @Autowired */
     Private ILoggerPtr logger;
+
+    /** Return POSIX TZ string for local time (display/Firebase). Override or change for your country. */
+    Private Static const char* GetTimezone() { return "IST-5:30"; }  // India. Others: "PST8", "AEST-10", "CET-1CEST"
 
     Private Static const ULong kNtpPort = 123;
     Private Static const ULong kNtpTimeoutMs = 8000u;
@@ -79,6 +84,10 @@ class DeviceTimeSyncNtp : public IDeviceTime {
     Public ~DeviceTimeSyncNtp() override = default;
 
     Public Virtual Bool SyncTimeFromNetwork() override {
+        const char* tz = GetTimezone();
+        if (tz && setenv("TZ", tz, 1) == 0) {
+            tzset();
+        }
         logger->Info(Tag::Untagged, StdString("[DeviceTimeSyncNtp] Syncing time from NTP (UDP + settimeofday)..."));
         WiFiUDP udp;
         if (!udp.begin(8888)) {
@@ -105,7 +114,7 @@ class DeviceTimeSyncNtp : public IDeviceTime {
                 logger->Error(Tag::Untagged, StdString("[DeviceTimeSyncNtp] settimeofday() failed."));
                 return false;
             }
-            logger->Info(Tag::Untagged, StdString("[DeviceTimeSyncNtp] Time synced from ") + host + " (UTC).");
+            logger->Info(Tag::Untagged, StdString("[DeviceTimeSyncNtp] Time synced from ") + host + " (local timezone: " + StdString(GetTimezone()) + ").");
             return true;
         }
         udp.stop();
