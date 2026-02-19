@@ -3,8 +3,8 @@
 
 #include <StandardDefines.h>
 #include <functional>
+#include "IRunnable.h"
 
-// Forward declarations
 DefineStandardPointers(IThreadPool)
 class IThreadPool {
 
@@ -20,6 +20,13 @@ class IThreadPool {
      * @return true if task was accepted, false if pool is shutdown or full
      */
     Public Virtual Bool Submit(std::function<Void()> task) = 0;
+
+    /**
+     * @brief Submits a runnable to be executed by a worker thread (calls Run() on the runnable).
+     * @param runnable The runnable to execute
+     * @return true if task was accepted, false if pool is shutdown, full, or runnable is null
+     */
+    Public Virtual Bool Execute(IRunnablePtr runnable) = 0;
 
     /**
      * @brief Stops accepting new tasks; already queued tasks may still run

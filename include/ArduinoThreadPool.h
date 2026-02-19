@@ -4,6 +4,7 @@
 #define ARDUINO_THREAD_POOL_H
 
 #include "IThreadPool.h"
+#include "IRunnable.h"
 #include <StandardDefines.h>
 #include <queue>
 #include <functional>
@@ -162,6 +163,11 @@ Public
         xSemaphoreGive(mutex);
         xSemaphoreGive(taskAvailable);
         return true;
+    }
+
+    Bool Execute(IRunnablePtr runnable) override {
+        if (!runnable) return false;
+        return Submit([runnable]() { runnable->Run(); });
     }
 
     Void Shutdown() override {

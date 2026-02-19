@@ -102,6 +102,11 @@ Public
         return true;
     }
 
+    Bool Execute(IRunnablePtr runnable) override {
+        if (!runnable) return false;
+        return Submit([runnable]() { runnable->Run(); });
+    }
+
     Void Shutdown() override {
         shutdown = true;
         cvTask.notify_all();
