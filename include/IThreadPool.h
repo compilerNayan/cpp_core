@@ -3,6 +3,7 @@
 
 #include <StandardDefines.h>
 #include <functional>
+#include <memory>
 #include "IRunnable.h"
 
 DefineStandardPointers(IThreadPool)
@@ -27,6 +28,16 @@ class IThreadPool {
      * @return true if task was accepted, false if pool is shutdown, full, or runnable is null
      */
     Public Virtual Bool Execute(IRunnablePtr runnable) = 0;
+
+    /**
+     * @brief Submits a runnable by type: creates an instance of T (default constructor) and executes Run() on it.
+     * @tparam T Runnable type (must inherit from IRunnable)
+     * @return true if task was accepted, false if pool is shutdown or full
+     */
+    template<typename T>
+    Bool Execute() {
+        return Execute(std::make_shared<T>());
+    }
 
     /**
      * @brief Stops accepting new tasks; already queued tasks may still run
