@@ -5,7 +5,7 @@
 #include <StandardDefines.h>
 
 #ifndef DEVICE_SERIAL_NUMBER
-#define DEVICE_SERIAL_NUMBER "NANDED"
+#define DEVICE_SERIAL_NUMBER "AX9STEMN7K"
 #endif
 #ifndef DEVICE_SECRET
 #define DEVICE_SECRET "dummy-secret"
