@@ -18,10 +18,11 @@
 #define THREAD_POOL_ESP32_SYSTEM_CORE 0
 #define THREAD_POOL_ESP32_APP_CORE 1
 
-/* @Component
+/*
  * No worker pool: each Execute()/Submit() creates a new FreeRTOS task.
  * Stack size: 8 KB if heavyDuty, else 4 KB. Core from argument.
  */
+/* @Component */
 class ThreadPool final : public IThreadPool {
 
     struct ExecuteParam {
