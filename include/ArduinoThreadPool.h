@@ -201,7 +201,8 @@ Public
         return true;
     }
 
-    Bool Execute(IRunnablePtr runnable, ThreadPoolCore core = ThreadPoolCore::System) override {
+    Bool Execute(IRunnablePtr runnable, ThreadPoolCore core = ThreadPoolCore::System, Bool heavyDuty = false) override {
+        (void)heavyDuty;  // reserved for later: e.g. assign worker with larger stack
         if (!runnable) return false;
         return SubmitToCore([runnable]() { runnable->Run(); }, core);
     }

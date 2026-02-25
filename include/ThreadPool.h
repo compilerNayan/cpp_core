@@ -102,7 +102,9 @@ Public
         return true;
     }
 
-    Bool Execute(IRunnablePtr runnable) override {
+    Bool Execute(IRunnablePtr runnable, ThreadPoolCore core = ThreadPoolCore::System, Bool heavyDuty = false) override {
+        (void)core;
+        (void)heavyDuty;  // reserved for later
         if (!runnable) return false;
         return Submit([runnable]() { runnable->Run(); });
     }
