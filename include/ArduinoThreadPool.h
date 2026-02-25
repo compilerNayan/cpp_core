@@ -15,24 +15,40 @@
 #define THREAD_POOL_ESP32_STACK_SIZE 8192
 #define THREAD_POOL_ESP32_PRIORITY 1
 #define THREAD_POOL_ESP32_MAX_QUEUE_SIGNALS 512
+// Core 0 = system core, Core 1 = application core. Split workers across both.
+#define THREAD_POOL_ESP32_SYSTEM_CORE 0
+#define THREAD_POOL_ESP32_APP_CORE 1
 
 /* @Component */
 class ThreadPool final : public IThreadPool {
 
+    struct WorkerParam {
+        ThreadPool* self;
+        BaseType_t coreId;
+    };
+
     Private Size poolSize;
-    Private std::queue<std::function<Void()>*> taskQueue;
+    Private Size systemCoreCount;
+    Private Size appCoreCount;
+    Private std::queue<std::function<Void()>*> taskQueueSystem;
+    Private std::queue<std::function<Void()>*> taskQueueApp;
     Private SemaphoreHandle_t mutex;
-    Private SemaphoreHandle_t taskAvailable;
+    Private SemaphoreHandle_t taskAvailableSystem;
+    Private SemaphoreHandle_t taskAvailableApp;
     Private SemaphoreHandle_t allDone;
     Private SemaphoreHandle_t workersExited;
     Private volatile Bool shutdownFlag;
     Private volatile Bool shutdownNowFlag;
     Private volatile Size runningCount;
     Private StdVector<TaskHandle_t> workerHandles;
+    Private WorkerParam workerParamSystem;
+    Private WorkerParam workerParamApp;
 
-    Private Void WorkerLoop() {
+    Private Void WorkerLoop(BaseType_t coreId) {
+        SemaphoreHandle_t mySem = (coreId == THREAD_POOL_ESP32_SYSTEM_CORE) ? taskAvailableSystem : taskAvailableApp;
+        std::queue<std::function<Void()>*>* myQueue = (coreId == THREAD_POOL_ESP32_SYSTEM_CORE) ? &taskQueueSystem : &taskQueueApp;
         for (;;) {
-            if (xSemaphoreTake(taskAvailable, portMAX_DELAY) != pdTRUE) {
+            if (xSemaphoreTake(mySem, portMAX_DELAY) != pdTRUE) {
                 continue;
             }
             std::function<Void()>* taskPtr = nullptr;
@@ -46,15 +62,15 @@ class ThreadPool final : public IThreadPool {
                     vTaskDelete(nullptr);
                     return;
                 }
-                if (shutdownFlag && taskQueue.empty()) {
+                if (shutdownFlag && myQueue->empty()) {
                     xSemaphoreGive(mutex);
                     if (workersExited) { xSemaphoreGive(workersExited); }
                     vTaskDelete(nullptr);
                     return;
                 }
-                if (!taskQueue.empty()) {
-                    taskPtr = taskQueue.front();
-                    taskQueue.pop();
+                if (!myQueue->empty()) {
+                    taskPtr = myQueue->front();
+                    myQueue->pop();
                     ++runningCount;
                 }
                 xSemaphoreGive(mutex);
@@ -68,7 +84,7 @@ class ThreadPool final : public IThreadPool {
                 taskPtr = nullptr;
                 if (xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
                     --runningCount;
-                    if (taskQueue.empty() && runningCount == 0) {
+                    if (taskQueueSystem.empty() && taskQueueApp.empty() && runningCount == 0) {
                         xSemaphoreGive(allDone);
                     }
                     xSemaphoreGive(mutex);
@@ -78,9 +94,9 @@ class ThreadPool final : public IThreadPool {
     }
 
     Private Static Void WorkerTrampoline(Void* param) {
-        ThreadPool* self = static_cast<ThreadPool*>(param);
-        if (self) {
-            self->WorkerLoop();
+        WorkerParam* wp = static_cast<WorkerParam*>(param);
+        if (wp && wp->self) {
+            wp->self->WorkerLoop(wp->coreId);
         }
         vTaskDelete(nullptr);
     }
@@ -94,13 +110,21 @@ Public
         , shutdownNowFlag(false)
         , runningCount(0)
         , workersExited(nullptr) {
+        systemCoreCount = (poolSize + 1) / 2;
+        appCoreCount = poolSize / 2;
+        workerParamSystem.self = this;
+        workerParamSystem.coreId = THREAD_POOL_ESP32_SYSTEM_CORE;
+        workerParamApp.self = this;
+        workerParamApp.coreId = THREAD_POOL_ESP32_APP_CORE;
         mutex = xSemaphoreCreateMutex();
-        taskAvailable = xSemaphoreCreateCounting(THREAD_POOL_ESP32_MAX_QUEUE_SIGNALS, 0);
+        taskAvailableSystem = xSemaphoreCreateCounting(THREAD_POOL_ESP32_MAX_QUEUE_SIGNALS, 0);
+        taskAvailableApp = xSemaphoreCreateCounting(THREAD_POOL_ESP32_MAX_QUEUE_SIGNALS, 0);
         allDone = xSemaphoreCreateBinary();
         workersExited = xSemaphoreCreateCounting(static_cast<UBaseType_t>(poolSize), 0);
-        if (!mutex || !taskAvailable || !allDone || !workersExited) {
+        if (!mutex || !taskAvailableSystem || !taskAvailableApp || !allDone || !workersExited) {
             if (mutex) { vSemaphoreDelete(mutex); mutex = nullptr; }
-            if (taskAvailable) { vSemaphoreDelete(taskAvailable); taskAvailable = nullptr; }
+            if (taskAvailableSystem) { vSemaphoreDelete(taskAvailableSystem); taskAvailableSystem = nullptr; }
+            if (taskAvailableApp) { vSemaphoreDelete(taskAvailableApp); taskAvailableApp = nullptr; }
             if (allDone) { vSemaphoreDelete(allDone); allDone = nullptr; }
             if (workersExited) { vSemaphoreDelete(workersExited); workersExited = nullptr; }
             poolSize = 0;
@@ -109,8 +133,10 @@ Public
         workerHandles.reserve(poolSize);
         for (Size i = 0; i < poolSize; ++i) {
             TaskHandle_t h = nullptr;
-            xTaskCreate(WorkerTrampoline, "tp_worker", THREAD_POOL_ESP32_STACK_SIZE,
-                        this, THREAD_POOL_ESP32_PRIORITY, &h);
+            BaseType_t coreId = (i < systemCoreCount) ? THREAD_POOL_ESP32_SYSTEM_CORE : THREAD_POOL_ESP32_APP_CORE;
+            WorkerParam* param = (coreId == THREAD_POOL_ESP32_SYSTEM_CORE) ? &workerParamSystem : &workerParamApp;
+            xTaskCreatePinnedToCore(WorkerTrampoline, "tp_worker", THREAD_POOL_ESP32_STACK_SIZE,
+                        param, THREAD_POOL_ESP32_PRIORITY, &h, coreId);
             if (h) {
                 workerHandles.push_back(h);
             }
@@ -125,9 +151,13 @@ Public
                 xSemaphoreTake(workersExited, portMAX_DELAY);
             }
         }
-        if (taskAvailable) {
-            vSemaphoreDelete(taskAvailable);
-            taskAvailable = nullptr;
+        if (taskAvailableSystem) {
+            vSemaphoreDelete(taskAvailableSystem);
+            taskAvailableSystem = nullptr;
+        }
+        if (taskAvailableApp) {
+            vSemaphoreDelete(taskAvailableApp);
+            taskAvailableApp = nullptr;
         }
         if (allDone) {
             vSemaphoreDelete(allDone);
@@ -144,6 +174,10 @@ Public
     }
 
     Bool Submit(std::function<Void()> task) override {
+        return SubmitToCore(std::move(task), ThreadPoolCore::System);
+    }
+
+    Bool SubmitToCore(std::function<Void()> task, ThreadPoolCore core) {
         if (!task || !mutex) {
             return false;
         }
@@ -154,41 +188,54 @@ Public
             xSemaphoreGive(mutex);
             return false;
         }
+        std::queue<std::function<Void()>*>* q = (core == ThreadPoolCore::System) ? &taskQueueSystem : &taskQueueApp;
+        SemaphoreHandle_t sem = (core == ThreadPoolCore::System) ? taskAvailableSystem : taskAvailableApp;
         std::function<Void()>* copy = new std::function<Void()>(std::move(task));
         if (!copy) {
             xSemaphoreGive(mutex);
             return false;
         }
-        taskQueue.push(copy);
+        q->push(copy);
         xSemaphoreGive(mutex);
-        xSemaphoreGive(taskAvailable);
+        xSemaphoreGive(sem);
         return true;
     }
 
-    Bool Execute(IRunnablePtr runnable) override {
+    Bool Execute(IRunnablePtr runnable, ThreadPoolCore core = ThreadPoolCore::System) override {
         if (!runnable) return false;
-        return Submit([runnable]() { runnable->Run(); });
+        return SubmitToCore([runnable]() { runnable->Run(); }, core);
     }
 
     Void Shutdown() override {
         shutdownFlag = true;
-        for (Size i = 0; i < poolSize; ++i) {
-            xSemaphoreGive(taskAvailable);
+        for (Size i = 0; i < systemCoreCount; ++i) {
+            xSemaphoreGive(taskAvailableSystem);
+        }
+        for (Size i = 0; i < appCoreCount; ++i) {
+            xSemaphoreGive(taskAvailableApp);
         }
     }
 
     Void ShutdownNow() override {
         shutdownNowFlag = true;
         if (xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
-            while (!taskQueue.empty()) {
-                std::function<Void()>* t = taskQueue.front();
-                taskQueue.pop();
+            while (!taskQueueSystem.empty()) {
+                std::function<Void()>* t = taskQueueSystem.front();
+                taskQueueSystem.pop();
+                delete t;
+            }
+            while (!taskQueueApp.empty()) {
+                std::function<Void()>* t = taskQueueApp.front();
+                taskQueueApp.pop();
                 delete t;
             }
             xSemaphoreGive(mutex);
         }
-        for (Size i = 0; i < poolSize; ++i) {
-            xSemaphoreGive(taskAvailable);
+        for (Size i = 0; i < systemCoreCount; ++i) {
+            xSemaphoreGive(taskAvailableSystem);
+        }
+        for (Size i = 0; i < appCoreCount; ++i) {
+            xSemaphoreGive(taskAvailableApp);
         }
     }
 
@@ -199,7 +246,7 @@ Public
             if (xSemaphoreTake(mutex, portMAX_DELAY) != pdTRUE) {
                 return false;
             }
-            Bool idle = taskQueue.empty() && (runningCount == 0);
+            Bool idle = taskQueueSystem.empty() && taskQueueApp.empty() && (runningCount == 0);
             xSemaphoreGive(mutex);
             if (idle) {
                 return true;
@@ -210,7 +257,7 @@ Public
             if (xSemaphoreTake(mutex, portMAX_DELAY) != pdTRUE) {
                 return false;
             }
-            Bool done = taskQueue.empty() && (runningCount == 0);
+            Bool done = taskQueueSystem.empty() && taskQueueApp.empty() && (runningCount == 0);
             xSemaphoreGive(mutex);
             if (done) {
                 return true;
@@ -227,7 +274,7 @@ Public
         if (xSemaphoreTake(mutex, portMAX_DELAY) != pdTRUE) {
             return 0;
         }
-        Size n = taskQueue.size();
+        Size n = taskQueueSystem.size() + taskQueueApp.size();
         xSemaphoreGive(mutex);
         return n;
     }
