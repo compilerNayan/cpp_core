@@ -11,8 +11,8 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-#define THREAD_POOL_ESP32_STACK_HEAVY 8192   // 8 KB for heavy-duty (e.g. Firebase, SSL)
-#define THREAD_POOL_ESP32_STACK_LIGHT 4096  // 4 KB for light tasks
+#define THREAD_POOL_ESP32_STACK_HEAVY 16384  // 16 KB for heavy-duty (e.g. Firebase, SSL)
+#define THREAD_POOL_ESP32_STACK_LIGHT 8192   // 8 KB for light tasks
 #define THREAD_POOL_ESP32_PRIORITY 1
 // Core 0 = system core, Core 1 = application core
 #define THREAD_POOL_ESP32_SYSTEM_CORE 0
