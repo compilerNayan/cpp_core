@@ -102,9 +102,11 @@ Public
         return true;
     }
 
-    Bool Execute(IRunnablePtr runnable, ThreadPoolCore core = ThreadPoolCore::System, Bool heavyDuty = false) override {
+    Bool Execute(IRunnablePtr runnable,
+                 ThreadPoolCore core = ThreadPoolCore::System,
+                 ThreadPoolStackSize stackSize = ThreadPoolStackSize::KB_8) override {
         (void)core;
-        (void)heavyDuty;  // reserved for later
+        (void)stackSize;  // desktop pool uses fixed worker stacks
         if (!runnable) return false;
         return Submit([runnable]() { runnable->Run(); });
     }

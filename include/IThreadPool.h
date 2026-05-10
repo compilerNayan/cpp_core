@@ -6,6 +6,7 @@
 #include <memory>
 #include "IRunnable.h"
 #include "ThreadPoolCore.h"
+#include "ThreadPoolStackSize.h"
 
 DefineStandardPointers(IThreadPool)
 class IThreadPool {
@@ -27,22 +28,24 @@ class IThreadPool {
      * @brief Submits a runnable to be executed by a worker thread on the specified core.
      * @param runnable The runnable to execute
      * @param core System core (0) or Application core (1); default System
-     * @param heavyDuty If true, task may use a larger stack (e.g. 8 KB); reserved for future use
+     * @param stackSize Requested task stack size (platform interprets as needed, e.g. ESP32 FreeRTOS bytes)
      * @return true if task was accepted, false if pool is shutdown, full, or runnable is null
      */
-    Public Virtual Bool Execute(IRunnablePtr runnable, ThreadPoolCore core = ThreadPoolCore::System, Bool heavyDuty = false) = 0;
+    Public Virtual Bool Execute(IRunnablePtr runnable,
+                                ThreadPoolCore core = ThreadPoolCore::System,
+                                ThreadPoolStackSize stackSize = ThreadPoolStackSize::KB_8) = 0;
 
     /**
      * @brief Submits a runnable by type: creates an instance of T (default constructor) and executes Run() on it.
      * @tparam T Runnable type (must inherit from IRunnable)
      * @param core System core (0) or Application core (1); default System
-     * @param heavyDuty If true, task may use a larger stack (e.g. 8 KB); reserved for future use
+     * @param stackSize Requested task stack size (platform interprets as needed)
      * @return true if task was accepted, false if pool is shutdown or full
      */
     template<typename T>
-    Bool Execute(ThreadPoolCore core = ThreadPoolCore::System, Bool heavyDuty = false) {
-        (void)heavyDuty;  // reserved for later: e.g. assign worker with larger stack
-        return Execute(std::make_shared<T>(), core, heavyDuty);
+    Bool Execute(ThreadPoolCore core = ThreadPoolCore::System,
+                 ThreadPoolStackSize stackSize = ThreadPoolStackSize::KB_8) {
+        return Execute(std::make_shared<T>(), core, stackSize);
     }
 
     /**

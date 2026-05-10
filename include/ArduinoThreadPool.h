@@ -11,8 +11,6 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-#define THREAD_POOL_ESP32_STACK_HEAVY 16384  // 16 KB for heavy-duty (e.g. Firebase, SSL)
-#define THREAD_POOL_ESP32_STACK_LIGHT 8192   // 8 KB for light tasks
 #define THREAD_POOL_ESP32_PRIORITY 1
 // Core 0 = system core, Core 1 = application core
 #define THREAD_POOL_ESP32_SYSTEM_CORE 0
@@ -20,7 +18,7 @@
 
 /*
  * No worker pool: each Execute()/Submit() creates a new FreeRTOS task.
- * Stack size: 8 KB if heavyDuty, else 4 KB. Core from argument.
+ * Execute() stack comes from ThreadPoolStackSize; Submit() uses KB_8. Core from argument.
  */
 /* @Component */
 class ThreadPool final : public IThreadPool {
@@ -102,8 +100,8 @@ class ThreadPool final : public IThreadPool {
         return (core == ThreadPoolCore::Application) ? THREAD_POOL_ESP32_APP_CORE : THREAD_POOL_ESP32_SYSTEM_CORE;
     }
 
-    Private UBaseType_t StackSize(Bool heavyDuty) {
-        return heavyDuty ? THREAD_POOL_ESP32_STACK_HEAVY : THREAD_POOL_ESP32_STACK_LIGHT;
+    Private UBaseType_t StackSize(ThreadPoolStackSize stackSize) {
+        return static_cast<UBaseType_t>(ThreadPoolStackBytes(stackSize));
     }
 
 Public
@@ -165,7 +163,7 @@ Public
             return false;
         }
         BaseType_t coreId = THREAD_POOL_ESP32_SYSTEM_CORE;
-        UBaseType_t stack = THREAD_POOL_ESP32_STACK_LIGHT;
+        UBaseType_t stack = StackSize(ThreadPoolStackSize::KB_8);
         TaskHandle_t h = nullptr;
         BaseType_t created = xTaskCreatePinnedToCore(
             SubmitTrampoline, "tp_submit", stack,
@@ -183,7 +181,9 @@ Public
         return true;
     }
 
-    Bool Execute(IRunnablePtr runnable, ThreadPoolCore core = ThreadPoolCore::System, Bool heavyDuty = false) override {
+    Bool Execute(IRunnablePtr runnable,
+                 ThreadPoolCore core = ThreadPoolCore::System,
+                 ThreadPoolStackSize stackSize = ThreadPoolStackSize::KB_8) override {
         if (!runnable || !mutex) return false;
         if (shutdownFlag || shutdownNowFlag) return false;
         if (xSemaphoreTake(mutex, portMAX_DELAY) != pdTRUE) {
@@ -205,7 +205,7 @@ Public
             return false;
         }
         BaseType_t coreId = CoreToId(core);
-        UBaseType_t stack = StackSize(heavyDuty);
+        UBaseType_t stack = StackSize(stackSize);
         TaskHandle_t h = nullptr;
         BaseType_t created = xTaskCreatePinnedToCore(
             ExecuteTrampoline, "tp_exec", stack,
